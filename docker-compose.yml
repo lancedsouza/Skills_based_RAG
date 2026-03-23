@@ -1,0 +1,173 @@
+#Only backend docker container
+# version: "3.9"
+
+# services:
+
+#   postgres:
+#     image: pgvector/pgvector:pg16
+#     container_name: recruitment_postgres
+#     restart: unless-stopped
+
+#     environment:
+#       POSTGRES_USER: admin
+#       POSTGRES_PASSWORD: admin
+#       POSTGRES_DB: recruitment
+
+#     ports:
+#       - "5432:5432"
+
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U admin"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+
+#   ollama:
+#     image: ollama/ollama
+#     container_name: recruitment_ollama
+#     restart: unless-stopped
+
+#     ports:
+#       - "11434:11434"
+
+#     volumes:
+#       - ollama_data:/root/.ollama
+
+#     deploy:
+#       resources:
+#         limits:
+#           memory: 6g
+
+
+#   backend:
+#     build: ./backend
+#     container_name: recruitment_backend
+#     restart: unless-stopped
+
+#     ports:
+#       - "8000:8000"
+
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#       ollama:
+#         condition: service_started
+
+#     env_file:
+#       - .env
+
+#     volumes:
+#       - ./backend:/app
+
+#     command: >
+#       uvicorn app.main:app
+#       --host 0.0.0.0
+#       --port 8000
+#       --reload
+
+
+# volumes:
+#   postgres_data:
+#   ollama_data:
+
+
+#Both front and backend docker container
+
+
+
+version: "3.9"
+
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: recruitment_postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: recruitment
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d recruitment"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  ollama:
+    image: ollama/ollama
+    container_name: recruitment_ollama
+    restart: unless-stopped
+
+    ports:
+      - "11434:11434"
+
+    volumes:
+      - ollama_data:/root/.ollama
+
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+
+
+  backend:
+    build: ./backend
+    container_name: recruitment_backend
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+    env_file:
+      - .env
+
+    volumes:
+      - ./backend:/app
+
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+
+
+  frontend:
+    build: ./frontend
+    container_name: recruitment_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    # Use the -H instead of --host, and make sure there is only ONE 'command:'
+    command: pnpm dev -H 0.0.0.0
+
+
+volumes:
+  postgres_data:
+  ollama_data:
